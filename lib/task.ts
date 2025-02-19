@@ -13,13 +13,13 @@ export type Task = z.infer<typeof taskSchema>;
 export type SavedTask = z.infer<typeof savedTaskSchema>;
 
 export async function getTasks() {
-  const res = await fetch("http://ip:3000/api/tasks");
+  const res = await fetch("http://localhost:3000/api/tasks");
   return (await res.json()) as SavedTask[];
 }
 
 export async function addTask(task: Task) {
   task = taskSchema.parse(task);
-  const res = await fetch("http://ip:3000/api/tasks", {
+  const res = await fetch("http://localhost:3000/api/tasks", {
     method: "POST",
     body: JSON.stringify(task),
   });
@@ -27,7 +27,7 @@ export async function addTask(task: Task) {
 }
 
 export async function deleteTask(id: number) {
-  const res = await fetch("http://ip:3000/api/tasks", {
+  const res = await fetch("http://localhost:3000/api/tasks", {
     method: "DELETE",
     body: JSON.stringify({ id }),
   });
