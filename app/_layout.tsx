@@ -1,14 +1,10 @@
-import { Stack } from "expo-router";
-import { useReactQueryDevTools } from "@dev-plugins/react-query";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-const queryClient = new QueryClient();
+import { Stack } from 'expo-router';
 
 export default function RootLayout() {
-  useReactQueryDevTools(queryClient);
   return (
-    <QueryClientProvider client={queryClient}>
-      <Stack />
-    </QueryClientProvider>
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" />
+    </Stack>
   );
 }
