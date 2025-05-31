@@ -10,6 +10,58 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String?  // Optional because OAuth users won't have a password
+  firstName String?
+  lastName  String?
+  admin     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  friends    User[]   @relation("UserFriends")
+  friendOf   User[]   @relation("UserFriends")
+  visits     Visit[]
+  
+  accompaniedVisits Visit[] @relation("VisitCompanions")
+}
+
+model Restaurant {
+  id         Int       @id @default(autoincrement())
+  name       String
+  latitude   Float
+  longitude  Float
+  address    String?
+
+  visits     Visit[]
+}
+
+model Visit {
+  id         Int       @id @default(autoincrement())
+  user       User      @relation(fields: [userId], references: [id])
+  userId     Int
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId Int
+
+  review     String?
+  rating     Int?
+  price      String?
+  visitedAt  DateTime @default(now())
+  
+  companions   User[]   @relation("VisitCompanions")
+
+  images     Image[]
+}
+
+model Image {
+  id      Int    @id @default(autoincrement())
+  url     String
+  visit   Visit  @relation(fields: [visitId], references: [id])
+  visitId Int
+}
+
 model Task {
   id Int @id @default(autoincrement())
   title String
