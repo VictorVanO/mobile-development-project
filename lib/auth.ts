@@ -29,13 +29,12 @@ export type User = {
 const USER_DATA_KEY = 'user_data';
 const USER_SESSION_KEY = 'user_session';
 
-// Web API base URL - Different port from mobile app
-const WEB_API_BASE_URL = 'http://localhost:3000'; // Web version runs on port 3000
+// Web API base URL - Make sure this matches your web server
+const WEB_API_BASE_URL = 'http://localhost:3000'; // Adjust this to your web server URL
 
 export class WebApiAuthService {
   /**
-   * Login using the web version's login action
-   * Based on the web version's loginAction in src/lib/auth/user.ts
+   * Login using the web version's API
    */
   static async login(email: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
     try {
@@ -51,28 +50,17 @@ export class WebApiAuthService {
         body: formData,
       });
 
-      if (!response.ok) {
-        return { success: false, error: 'Login failed' };
-      }
-
       const data = await response.json();
 
-      if (!data.success) {
+      if (!response.ok || !data.success) {
         return { success: false, error: data.error || 'Login failed' };
       }
 
-      // For session-based auth, we need to store the session cookie or user identifier
-      // Since the web version uses sessions, we'll store the user email as session identifier
+      // Store session and user data
       await SecureStore.setItemAsync(USER_SESSION_KEY, validatedData.email);
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(data.user));
       
-      // Get user data after successful login
-      const userData = await this.getCurrentUser();
-      if (userData) {
-        await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
-        return { success: true, user: userData };
-      }
-
-      return { success: true };
+      return { success: true, user: data.user };
     } catch (error) {
       if (error instanceof z.ZodError) {
         return { success: false, error: 'Invalid email or password format' };
@@ -83,8 +71,7 @@ export class WebApiAuthService {
   }
 
   /**
-   * Register using the web version's register action
-   * Based on the web version's registerAction in src/lib/auth/user.ts
+   * Register using the web version's API
    */
   static async register(
     email: string, 
@@ -111,27 +98,17 @@ export class WebApiAuthService {
         body: formData,
       });
 
-      if (!response.ok) {
-        return { success: false, error: 'Registration failed' };
-      }
-
       const data = await response.json();
 
-      if (!data.success) {
+      if (!response.ok || !data.success) {
         return { success: false, error: data.error || 'Registration failed' };
       }
 
       // Store session and user data
       await SecureStore.setItemAsync(USER_SESSION_KEY, validatedData.email);
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(data.user));
       
-      // Get user data after successful registration
-      const userData = await this.getCurrentUser();
-      if (userData) {
-        await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
-        return { success: true, user: userData };
-      }
-
-      return { success: true };
+      return { success: true, user: data.user };
     } catch (error) {
       if (error instanceof z.ZodError) {
         return { success: false, error: 'Invalid input data' };
@@ -142,8 +119,7 @@ export class WebApiAuthService {
   }
 
   /**
-   * Get current user from web API
-   * Based on the web version's getUser query
+   * Get current user from web API or local storage
    */
   static async getCurrentUser(): Promise<User | null> {
     try {
@@ -153,22 +129,25 @@ export class WebApiAuthService {
       }
 
       // Try to get fresh user data from the web API
-      const response = await fetch(`${WEB_API_BASE_URL}/api/auth/user`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // Include session identifier if the web API supports it
-          'X-User-Email': sessionEmail,
-        },
-      });
+      try {
+        const response = await fetch(`${WEB_API_BASE_URL}/api/auth/user`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Email': sessionEmail,
+          },
+        });
 
-      if (response.ok) {
-        const userData = await response.json();
-        if (userData && userData.id) {
-          // Update stored user data
-          await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
-          return userData;
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData && userData.id) {
+            // Update stored user data
+            await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+            return userData;
+          }
         }
+      } catch (networkError) {
+        console.log('Network error getting fresh user data, using cached data');
       }
 
       // Fallback to stored user data
@@ -176,14 +155,7 @@ export class WebApiAuthService {
       return storedUserData ? JSON.parse(storedUserData) : null;
     } catch (error) {
       console.error('Get current user error:', error);
-      
-      // Fallback to stored user data
-      try {
-        const storedUserData = await AsyncStorage.getItem(USER_DATA_KEY);
-        return storedUserData ? JSON.parse(storedUserData) : null;
-      } catch {
-        return null;
-      }
+      return null;
     }
   }
 
@@ -195,7 +167,7 @@ export class WebApiAuthService {
       const sessionEmail = await SecureStore.getItemAsync(USER_SESSION_KEY);
       
       if (sessionEmail) {
-        // Try to logout from web API if it has a logout endpoint
+        // Try to logout from web API
         try {
           await fetch(`${WEB_API_BASE_URL}/api/auth/logout`, {
             method: 'POST',
@@ -243,7 +215,6 @@ export class WebApiAuthService {
 
   /**
    * Helper function to make authenticated requests to the web API
-   * Similar to the pattern used in lib/task.ts
    */
   static async authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
     const sessionEmail = await this.getSessionEmail();
@@ -260,8 +231,7 @@ export class WebApiAuthService {
 }
 
 /**
- * Alternative simpler approach if the web API doesn't support direct authentication
- * This mimics the task.ts pattern more closely
+ * Simple testing functions
  */
 export class SimpleWebApiAuth {
   /**
@@ -281,30 +251,15 @@ export class SimpleWebApiAuth {
   }
 
   /**
-   * Find user by email and password (client-side verification)
-   * Note: This is less secure but works if the web API doesn't have auth endpoints
+   * Test connection to web API
    */
-  static async loginWithUserList(email: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
+  static async testConnection(): Promise<boolean> {
     try {
-      // This would require the web API to expose a users endpoint
-      const users = await this.getUsers();
-      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-      
-      if (!user) {
-        return { success: false, error: 'User not found' };
-      }
-
-      // Note: This doesn't verify password since we can't access hashed passwords
-      // You'd need to implement a proper auth endpoint in the web version
-      
-      // Store user data
-      await SecureStore.setItemAsync(USER_SESSION_KEY, email);
-      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
-      
-      return { success: true, user };
+      const response = await fetch(`${WEB_API_BASE_URL}/api/users`);
+      return response.ok;
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: 'Login failed' };
+      console.error('Connection test failed:', error);
+      return false;
     }
   }
 }

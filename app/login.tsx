@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Link, router } from 'expo-router';
-import { WebApiAuthService } from '@/lib/auth';
+import { WebApiAuthService, SimpleWebApiAuth } from '@/lib/webapi-auth';
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -24,6 +24,21 @@ export default function LoginScreen() {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
+  // Test connection on component mount
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const isConnected = await SimpleWebApiAuth.testConnection();
+        setConnectionStatus(isConnected ? 'connected' : 'disconnected');
+      } catch (error) {
+        setConnectionStatus('disconnected');
+      }
+    };
+
+    testConnection();
+  }, []);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -55,6 +70,11 @@ export default function LoginScreen() {
 
   const handleSubmit = async () => {
     if (!validateForm()) {
+      return;
+    }
+
+    if (connectionStatus === 'disconnected') {
+      Alert.alert('Connection Error', 'Cannot connect to the server. Please check if the web server is running on localhost:3000');
       return;
     }
 
@@ -94,7 +114,7 @@ export default function LoginScreen() {
       }
     } catch (error) {
       console.error('Auth error:', error);
-      Alert.alert('Error', 'Network error. Please try again.');
+      Alert.alert('Error', 'Network error. Please make sure the web server is running.');
     } finally {
       setLoading(false);
     }
@@ -116,12 +136,42 @@ export default function LoginScreen() {
     resetForm();
   };
 
+  const testWithExistingUser = async () => {
+    try {
+      const users = await SimpleWebApiAuth.getUsers();
+      if (users.length > 0) {
+        setFormData({
+          ...formData,
+          email: users[0].email,
+          password: '12345678' // You'll need to know the actual password
+        });
+        Alert.alert('Info', `Filled with existing user: ${users[0].email}. You may need to adjust the password.`);
+      } else {
+        Alert.alert('Info', 'No users found in the database.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Could not fetch users from the server.');
+    }
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Connection Status */}
+        <View style={styles.connectionStatus}>
+          <Text style={[
+            styles.connectionText, 
+            connectionStatus === 'connected' ? styles.connected : 
+            connectionStatus === 'disconnected' ? styles.disconnected : styles.checking
+          ]}>
+            Server: {connectionStatus === 'checking' ? 'Checking...' : 
+                     connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
+          </Text>
+        </View>
+
         <View style={styles.formContainer}>
           <Text style={styles.title}>
             {isLogin ? 'Welcome Back!' : 'Create Account'}
@@ -205,14 +255,26 @@ export default function LoginScreen() {
 
           {/* Submit button */}
           <TouchableOpacity
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            style={[styles.submitButton, (loading || connectionStatus === 'disconnected') && styles.submitButtonDisabled]}
             onPress={handleSubmit}
-            disabled={loading}
+            disabled={loading || connectionStatus === 'disconnected'}
           >
             <Text style={styles.submitButtonText}>
               {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
             </Text>
           </TouchableOpacity>
+
+          {/* Test button for development */}
+          {isLogin && connectionStatus === 'connected' && (
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={testWithExistingUser}
+            >
+              <Text style={styles.testButtonText}>
+                Fill with existing user (for testing)
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Toggle mode */}
           <View style={styles.toggleContainer}>
@@ -245,6 +307,29 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
+  },
+  connectionStatus: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  connectionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  checking: {
+    backgroundColor: '#f0f0f0',
+    color: '#666',
+  },
+  connected: {
+    backgroundColor: '#d4edda',
+    color: '#155724',
+  },
+  disconnected: {
+    backgroundColor: '#f8d7da',
+    color: '#721c24',
   },
   formContainer: {
     backgroundColor: '#fff',
@@ -322,6 +407,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  testButton: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  testButtonText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
   },
   toggleContainer: {
     flexDirection: 'row',
