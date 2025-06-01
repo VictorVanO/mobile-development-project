@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Link, router } from 'expo-router';
-import { AuthService } from '@/lib/auth';
+import { WebApiAuthService } from '@/lib/auth';
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -65,9 +65,9 @@ export default function LoginScreen() {
       let result;
       
       if (isLogin) {
-        result = await AuthService.login(formData.email, formData.password);
+        result = await WebApiAuthService.login(formData.email, formData.password);
       } else {
-        result = await AuthService.register(
+        result = await WebApiAuthService.register(
           formData.email,
           formData.password,
           formData.firstName.trim() || undefined,

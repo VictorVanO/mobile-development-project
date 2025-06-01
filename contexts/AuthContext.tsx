@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { AuthService, User } from '@/lib/auth';
+import { WebApiAuthService, User } from '@/lib/webapi-auth';
 
 interface AuthContextType {
   user: User | null;
@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const currentUser = await AuthService.getCurrentUser();
+      const currentUser = await WebApiAuthService.getCurrentUser();
       setUser(currentUser);
     } catch (error) {
       console.error('Error refreshing user:', error);
@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const result = await AuthService.login(email, password);
+      const result = await WebApiAuthService.login(email, password);
       if (result.success && result.user) {
         setUser(result.user);
       }
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
-      const result = await AuthService.register(email, password, firstName, lastName);
+      const result = await WebApiAuthService.register(email, password, firstName, lastName);
       if (result.success && result.user) {
         setUser(result.user);
       }
@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AuthService.logout();
+      await WebApiAuthService.logout();
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
