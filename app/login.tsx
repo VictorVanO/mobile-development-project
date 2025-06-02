@@ -147,7 +147,7 @@ export default function LoginScreen() {
           email: 'test1234@gmail.com',
           password: 'test1234'
         });
-        Alert.alert('Info', `Filled with existing user: ${users[0].email}. You may need to adjust the password.`);
+        Alert.alert('Info', `Filled with existing user: ${'test1234@gmail.com'}. You may need to adjust the password.`);
       } else {
         Alert.alert('Info', 'No users found in the database.');
       }
