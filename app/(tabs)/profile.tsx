@@ -91,7 +91,9 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity 
+            style={styles.actionItem}
+            onPress={() => router.push('/my-reviews')}>
             <Ionicons name="restaurant-outline" size={24} color="#666" />
             <Text style={styles.actionText}>My Reviews</Text>
             <Ionicons name="chevron-forward" size={20} color="#666" />

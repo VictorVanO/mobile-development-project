@@ -28,6 +28,13 @@ export default function RootLayout() {
             headerBackTitle: 'Back'
           }} 
         />
+        <Stack.Screen 
+          name="my-reviews" 
+          options={{ 
+            title: 'My Reviews',
+            headerBackTitle: 'Back'
+          }} 
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
     </AuthProvider>
