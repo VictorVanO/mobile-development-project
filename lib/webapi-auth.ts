@@ -30,8 +30,8 @@ const USER_DATA_KEY = 'user_data';
 const USER_SESSION_KEY = 'user_session';
 
 // Web API base URL - Make sure this matches your web server
-// const WEB_API_BASE_URL = 'http://localhost:3000'; // Adjust this to your web server URL
-const WEB_API_BASE_URL = 'http://192.168.88.34:3000'; // Adjust this to your web server URL
+// const WEB_API_BASE_URL = 'http://localhost:3000'; // Web server URL
+const WEB_API_BASE_URL = 'http://192.168.88.34:3000'; // Web server URL
 
 export class WebApiAuthService {
   /**

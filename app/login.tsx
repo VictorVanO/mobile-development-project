@@ -11,9 +11,12 @@ import {
   Platform,
 } from 'react-native';
 import { Link, router } from 'expo-router';
-import { WebApiAuthService, SimpleWebApiAuth } from '@/lib/webapi-auth';
+import { useAuth } from '@/contexts/AuthContext';
+import { SimpleWebApiAuth } from '@/lib/webapi-auth';
 
 export default function LoginScreen() {
+  const { login, register, user, loading: authLoading } = useAuth();
+  
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -25,6 +28,13 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      console.log('User already logged in, redirecting...');
+      router.replace('/(tabs)');
+    }
+  }, [user, authLoading]);
 
   // Test connection on component mount
   useEffect(() => {
@@ -74,7 +84,7 @@ export default function LoginScreen() {
     }
 
     if (connectionStatus === 'disconnected') {
-      Alert.alert('Connection Error', 'Cannot connect to the server. Please check if the web server is running on localhost:3000');
+      Alert.alert('Connection Error', 'Cannot connect to the server. Please check if the web server is running.');
       return;
     }
 
@@ -85,9 +95,11 @@ export default function LoginScreen() {
       let result;
       
       if (isLogin) {
-        result = await WebApiAuthService.login(formData.email, formData.password);
+        console.log('Attempting login...');
+        result = await login(formData.email, formData.password);
       } else {
-        result = await WebApiAuthService.register(
+        console.log('Attempting registration...');
+        result = await register(
           formData.email,
           formData.password,
           formData.firstName.trim() || undefined,
@@ -95,20 +107,10 @@ export default function LoginScreen() {
         );
       }
 
+      console.log('Auth result:', result);
+
       if (result.success) {
-        Alert.alert(
-          'Success',
-          isLogin ? 'Logged in successfully!' : 'Account created successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Navigate to main app
-                router.replace('/(tabs)');
-              }
-            }
-          ]
-        );
+        console.log('Authentication successful, user will be redirected automatically');
       } else {
         Alert.alert('Error', result.error || 'Something went wrong');
       }
@@ -142,8 +144,8 @@ export default function LoginScreen() {
       if (users.length > 0) {
         setFormData({
           ...formData,
-          email: users[0].email,
-          password: '12345678' // You'll need to know the actual password
+          email: 'test1234@gmail.com',
+          password: 'test1234'
         });
         Alert.alert('Info', `Filled with existing user: ${users[0].email}. You may need to adjust the password.`);
       } else {
@@ -153,6 +155,14 @@ export default function LoginScreen() {
       Alert.alert('Error', 'Could not fetch users from the server.');
     }
   };
+
+  if (authLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: '#fff', fontSize: 18 }}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView 
