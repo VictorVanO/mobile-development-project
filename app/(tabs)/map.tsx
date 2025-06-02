@@ -1,35 +1,99 @@
-import { Text, View, StyleSheet } from 'react-native';
-import React from 'react';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import MapViewCluster from 'react-native-map-clustering';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, Text, Alert } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+
+// Define types for marker
+interface MarkerData {
+  id: number;
+  coordinate: {
+    latitude: number;
+    longitude: number;
+  };
+  title: string;
+  description?: string;
+}
 
 export default function MapScreen() {
-  // Sample markers data - you'll replace with your actual data
-  const markers = [
-    { id: 1, coordinate: { latitude: 50.849368721107865, longitude: 4.349104494789498 }, title: "Au Bon Bol", description: "Restaurant chinois" },
-    { id: 2, coordinate: { latitude: 50.85033842838263, longitude: 4.350140743969398 }, title: "Ninja House", description: "Restaurant Japonais" },
-    // Add more markers here
+  const mapRef = useRef<MapView>(null);
+  
+  const [region, setRegion] = useState<Region>({
+    latitude: 50.872986, // Brussels coordinates
+    longitude: 4.309333,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
+  
+  // Sample markers data
+  const markers: MarkerData[] = [
+    { 
+      id: 1, 
+      coordinate: { latitude: 50.849368721107865, longitude: 4.349104494789498 }, 
+      title: "Au Bon Bol", 
+      description: "Restaurant chinois" 
+    },
+    { 
+      id: 2, 
+      coordinate: { latitude: 50.85033842838263, longitude: 4.350140743969398 }, 
+      title: "Ninja House", 
+      description: "Restaurant japonais" 
+    },
+    { 
+      id: 3, 
+      coordinate: { latitude: 51.50389211071925, longitude: -0.14854462660657064 }, 
+      title: "Hard Rock Cafe", 
+      description: "Restaurant américain" 
+    },
   ];
+
+  const onRegionChangeComplete = (newRegion: Region) => {
+    setRegion(newRegion);
+  };
+
+  const onLongPress = (e: any) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
+    console.log("Coordinates", { latitude, longitude });
+    Alert.alert(
+      "Location Selected",
+      `Latitude: ${latitude.toFixed(6)}\nLongitude: ${longitude.toFixed(6)}`,
+      [{ text: "OK" }]
+    );
+  };
+
+  const onMarkerPress = (marker: MarkerData) => {
+    Alert.alert(
+      marker.title,
+      marker.description || "Restaurant",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "View Reviews", onPress: () => console.log("Navigate to reviews") },
+        { text: "Add Review", onPress: () => console.log("Navigate to add review") }
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <MapViewCluster
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Find Restaurants</Text>
+        <Text style={styles.headerSubtitle}>Tap and hold to select a location</Text>
+      </View>
+      
+      <MapView
+        ref={mapRef}
         style={styles.map}
-        mapType="hybrid"
+        mapType="standard"
         provider={PROVIDER_GOOGLE}
-        initialRegion={{
-          latitude: 50.872986,
-          longitude: 4.309333,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        }}
-        onLongPress={(e) => {
-          console.log("Coordinates", e.nativeEvent.coordinate);
-        }}
-        clusterColor="#ff5252"
-        clusterTextColor="#ffffff"
-        spiralEnabled={true}
+        initialRegion={region}
+        onRegionChangeComplete={onRegionChangeComplete}
+        onLongPress={onLongPress}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
+        showsCompass={true}
+        showsScale={true}
+        rotateEnabled={true}
+        scrollEnabled={true}
         zoomEnabled={true}
+        pitchEnabled={true}
       >
         {markers.map(marker => (
           <Marker 
@@ -37,9 +101,12 @@ export default function MapScreen() {
             coordinate={marker.coordinate}
             title={marker.title}
             description={marker.description}
+            onPress={() => onMarkerPress(marker)}
+            // Performance optimization
+            tracksViewChanges={false}
           />
         ))}
-      </MapViewCluster>
+      </MapView>
     </View>
   );
 }
@@ -48,14 +115,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#25292e',
-    justifyContent: 'center',
+  },
+  header: {
+    backgroundColor: '#25292e',
+    paddingTop: 50,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
-  text: {
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#fff',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#ccc',
   },
   map: {
-    width: '100%',
-    height: '100%',
+    flex: 1,
   },
 });
