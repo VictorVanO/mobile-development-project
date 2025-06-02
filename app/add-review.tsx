@@ -86,6 +86,18 @@ export default function AddReviewScreen() {
     setLoading(true);
 
     try {
+      console.log('Submitting review with data:', {
+        restaurantName,
+        latitude,
+        longitude,
+        address,
+        rating,
+        review,
+        price,
+        userEmail: user.email,
+        imagesCount: images.length
+      });
+
       // Create FormData
       const formData = new FormData();
       formData.append('restaurantName', restaurantName);
@@ -97,21 +109,47 @@ export default function AddReviewScreen() {
       formData.append('price', price);
 
       // Add images
-      images.forEach(image => {
+      images.forEach((image, index) => {
         formData.append('imageUrls', image);
+        console.log(`Added image ${index + 1} to form data`);
       });
+
+      console.log('Making API request to:', `${WEB_API_BASE_URL}/api/reviews`);
 
       const response = await fetch(`${WEB_API_BASE_URL}/api/reviews`, {
         method: 'POST',
         body: formData,
         headers: {
           'X-User-Email': user.email,
+          // Don't set Content-Type header when using FormData - let the browser set it
         },
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
       if (!response.ok) {
-        throw new Error('Failed to submit review');
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
+
+      let result;
+      try {
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+        
+        if (responseText) {
+          result = JSON.parse(responseText);
+        } else {
+          result = { success: true };
+        }
+      } catch (parseError) {
+        console.log('Response was not JSON, assuming success');
+        result = { success: true };
+      }
+
+      console.log('Review submission result:', result);
 
       Alert.alert(
         'Success',
@@ -125,7 +163,27 @@ export default function AddReviewScreen() {
       );
     } catch (error) {
       console.error('Error submitting review:', error);
-      Alert.alert('Error', 'Failed to submit review. Please try again.');
+      
+      // For development/testing, show more detailed error info
+      Alert.alert(
+        'Submission Error', 
+        `Failed to submit review: ${error.message}`,
+        [
+          { text: 'OK' },
+          { 
+            text: 'Try Mock Submit', 
+            onPress: () => {
+              // Mock successful submission for testing
+              console.log('Mock submission successful');
+              Alert.alert(
+                'Mock Success',
+                'Review submitted successfully (mock mode)',
+                [{ text: 'OK', onPress: () => router.back() }]
+              );
+            }
+          }
+        ]
+      );
     } finally {
       setLoading(false);
     }

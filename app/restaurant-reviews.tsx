@@ -86,7 +86,7 @@ export default function RestaurantReviewsScreen() {
         // try the recent reviews endpoint and filter
         console.log('Trying fallback to recent reviews...');
         
-        const fallbackResponse = await fetch(`${WEB_API_BASE_URL}/api/reviews/recent`, {
+        const fallbackResponse = await fetch(`${WEB_API_BASE_URL}/api/reviews`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

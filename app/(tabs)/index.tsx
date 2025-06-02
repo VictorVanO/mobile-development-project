@@ -54,7 +54,7 @@ export default function Index() {
 
   const fetchRecentReviews = async () => {
     try {
-      const response = await fetch(`${WEB_API_BASE_URL}/api/reviews/recent`);
+      const response = await fetch(`${WEB_API_BASE_URL}/api/reviews`);
       if (!response.ok) {
         throw new Error('Failed to fetch reviews');
       }
