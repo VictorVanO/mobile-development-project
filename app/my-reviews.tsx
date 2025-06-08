@@ -400,21 +400,41 @@ export default function MyReviewsScreen() {
                         <Text style={styles.priceText}>{review.price}</Text>
                       )}
                     </View>
-                    
-                    <TouchableOpacity
-                      style={[
-                        styles.deleteButton,
-                        deletingReviewId === review.id && styles.deleteButtonDisabled
-                      ]}
-                      onPress={() => handleDeleteReview(review.id, review.restaurant.name)}
-                      disabled={deletingReviewId === review.id}
-                    >
-                      {deletingReviewId === review.id ? (
-                        <ActivityIndicator size="small" color="#FF3B30" />
-                      ) : (
-                        <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-                      )}
-                    </TouchableOpacity>
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity
+                        style={styles.editButton}
+                        onPress={() => router.push({
+                          pathname: '/edit-review',
+                          params: {
+                            reviewId: review.id.toString(),
+                            restaurantName: review.restaurant.name,
+                            latitude: review.restaurant.latitude.toString(),
+                            longitude: review.restaurant.longitude.toString(),
+                            address: review.restaurant.address || '',
+                            rating: review.rating?.toString() || '0',
+                            review: review.review || '',
+                            price: review.price || '',
+                          }
+                        })}
+                      >
+                        <Ionicons name="pencil-outline" size={18} color="#007AFF" />
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[
+                          styles.deleteButton,
+                          deletingReviewId === review.id && styles.deleteButtonDisabled
+                        ]}
+                        onPress={() => handleDeleteReview(review.id, review.restaurant.name)}
+                        disabled={deletingReviewId === review.id}
+                      >
+                        {deletingReviewId === review.id ? (
+                          <ActivityIndicator size="small" color="#FF3B30" />
+                        ) : (
+                          <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
 
@@ -608,6 +628,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontWeight: '500',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#B3D9FF',
   },
   deleteButton: {
     padding: 8,

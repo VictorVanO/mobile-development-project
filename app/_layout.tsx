@@ -22,6 +22,14 @@ export default function RootLayout() {
           }} 
         />
         <Stack.Screen 
+          name="edit-review" 
+          options={{ 
+            title: 'Edit Review',
+            presentation: 'modal',
+            headerBackTitle: 'Back'
+          }} 
+        />
+        <Stack.Screen 
           name="restaurant-reviews" 
           options={{ 
             title: 'Restaurant Reviews',

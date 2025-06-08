@@ -372,12 +372,36 @@ export default function RestaurantReviewsScreen() {
                     </View>
                   </View>
                   
-                  <View style={styles.ratingContainer}>
-                    <View style={styles.starsRow}>
-                      {renderStars(review.rating || 0)}
+                  <View style={styles.reviewActions}>
+                    <View style={styles.ratingContainer}>
+                      <View style={styles.starsRow}>
+                        {renderStars(review.rating || 0)}
+                      </View>
+                      {review.price && (
+                        <Text style={styles.priceText}>{review.price}</Text>
+                      )}
                     </View>
-                    {review.price && (
-                      <Text style={styles.priceText}>{review.price}</Text>
+                    
+                    {/* Show edit button only for user's own reviews */}
+                    {user && review.user.email === user.email && (
+                      <TouchableOpacity
+                        style={styles.editButton}
+                        onPress={() => router.push({
+                          pathname: '/edit-review',
+                          params: {
+                            reviewId: review.id.toString(),
+                            restaurantName: review.restaurant.name,
+                            latitude: review.restaurant.latitude.toString(),
+                            longitude: review.restaurant.longitude.toString(),
+                            address: review.restaurant.address || '',
+                            rating: review.rating?.toString() || '0',
+                            review: review.review || '',
+                            price: review.price || '',
+                          }
+                        })}
+                      >
+                        <Ionicons name="pencil-outline" size={18} color="#007AFF" />
+                      </TouchableOpacity>
                     )}
                   </View>
                 </View>
@@ -574,6 +598,17 @@ const styles = StyleSheet.create({
   reviewDate: {
     fontSize: 12,
     color: '#666',
+  },
+  reviewActions: {
+    alignItems: 'flex-end',
+  },
+  editButton: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#B3D9FF',
+    marginTop: 8,
   },
   ratingContainer: {
     alignItems: 'flex-end',
