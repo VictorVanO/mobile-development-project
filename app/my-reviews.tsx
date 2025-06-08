@@ -109,68 +109,15 @@ export default function MyReviewsScreen() {
     } catch (error) {
       console.error('Error fetching user reviews:', error);
       
-      // Mock data for testing
-      console.log('Using mock data for testing...');
-      const mockReviews: Review[] = [
-        {
-          id: 1,
-          review: "Amazing experience! The food was incredible and the service was top-notch. Will definitely come back!",
-          rating: 5,
-          price: "€€€",
-          visitedAt: new Date().toISOString(),
-          user: {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName || null,
-            lastName: user.lastName || null
-          },
-          restaurant: {
-            id: 1,
-            name: "La Belle Époque",
-            address: "123 Rue de la Paix, Brussels",
-            latitude: 50.8503,
-            longitude: 4.3517
-          },
-          images: [
-            {
-              id: 1,
-              url: "https://via.placeholder.com/300x200/4CAF50/white?text=Delicious+Meal"
-            }
-          ],
-          companions: []
-        },
-        {
-          id: 2,
-          review: "Good food but service was a bit slow. The atmosphere is nice though.",
-          rating: 3,
-          price: "€€",
-          visitedAt: new Date(Date.now() - 86400000).toISOString(),
-          user: {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName || null,
-            lastName: user.lastName || null
-          },
-          restaurant: {
-            id: 2,
-            name: "Café Central",
-            address: "45 Avenue Louise, Brussels",
-            latitude: 50.8467,
-            longitude: 4.3525
-          },
-          images: [],
-          companions: [
-            {
-              id: 2,
-              email: "friend@example.com",
-              firstName: "John",
-              lastName: "Doe"
-            }
-          ]
-        }
-      ];
-      
-      setReviews(mockReviews);
+      // Show error to user
+      Alert.alert(
+        'Connection Error',
+        'Unable to load your reviews. Please check your internet connection and try again.',
+        [
+          { text: 'OK' },
+          { text: 'Retry', onPress: () => fetchMyReviews() }
+        ]
+      );
     }
   };
 
@@ -195,10 +142,27 @@ export default function MyReviewsScreen() {
     setRefreshing(false);
   };
 
+  const handleEditReview = (review: Review) => {
+    // Navigate to edit review screen with all necessary data
+    router.push({
+      pathname: '/edit-review',
+      params: {
+        reviewId: review.id.toString(),
+        restaurantName: review.restaurant.name,
+        latitude: review.restaurant.latitude.toString(),
+        longitude: review.restaurant.longitude.toString(),
+        address: review.restaurant.address || '',
+        rating: review.rating?.toString() || '0',
+        review: review.review || '',
+        price: review.price || '',
+      }
+    });
+  };
+
   const handleDeleteReview = (reviewId: number, restaurantName: string) => {
     Alert.alert(
       'Delete Review',
-      `Are you sure you want to delete this review for ${restaurantName}? This cannot be undone.`,
+      `Are you sure you want to delete this review for ${restaurantName}? This action cannot be undone.`,
       [
         {
           text: 'Cancel',
@@ -232,7 +196,15 @@ export default function MyReviewsScreen() {
       console.log('Delete response status:', response.status);
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = 'Failed to delete review';
+        
+        if (response.status === 403) {
+          errorMessage = 'You are not authorized to delete this review';
+        } else if (response.status === 404) {
+          errorMessage = 'Review not found';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       // Remove the review from the local state
@@ -244,14 +216,7 @@ export default function MyReviewsScreen() {
       
     } catch (error) {
       console.error('Error deleting review:', error);
-      
-      // For testing, simulate successful deletion
-      console.log('Simulating successful deletion for testing...');
-      setReviews(prevReviews => 
-        prevReviews.filter(review => review.id !== reviewId)
-      );
-      
-      Alert.alert('Success', 'Review deleted successfully! (Mock mode)');
+      Alert.alert('Delete Error', error.message || 'Failed to delete review. Please try again.');
     } finally {
       setDeletingReviewId(null);
     }
@@ -403,19 +368,7 @@ export default function MyReviewsScreen() {
                     <View style={styles.actionButtons}>
                       <TouchableOpacity
                         style={styles.editButton}
-                        onPress={() => router.push({
-                          pathname: '/edit-review',
-                          params: {
-                            reviewId: review.id.toString(),
-                            restaurantName: review.restaurant.name,
-                            latitude: review.restaurant.latitude.toString(),
-                            longitude: review.restaurant.longitude.toString(),
-                            address: review.restaurant.address || '',
-                            rating: review.rating?.toString() || '0',
-                            review: review.review || '',
-                            price: review.price || '',
-                          }
-                        })}
+                        onPress={() => handleEditReview(review)}
                       >
                         <Ionicons name="pencil-outline" size={18} color="#007AFF" />
                       </TouchableOpacity>

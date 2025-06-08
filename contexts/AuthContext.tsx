@@ -8,6 +8,8 @@ interface AuthContextType {
   register: (email: string, password: string, firstName?: string, lastName?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  // Add a method to trigger updates when reviews change
+  triggerUpdate: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +29,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updateTrigger, setUpdateTrigger] = useState(0);
 
   const refreshUser = async () => {
     try {
@@ -48,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     initializeAuth();
-  }, []);
+  }, [updateTrigger]); // Re-run when updateTrigger changes
 
   const login = async (email: string, password: string) => {
     try {
@@ -85,6 +88,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const triggerUpdate = () => {
+    setUpdateTrigger(prev => prev + 1);
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -92,6 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     refreshUser,
+    triggerUpdate,
   };
 
   return (

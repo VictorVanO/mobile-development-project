@@ -18,6 +18,11 @@ import { useAuth } from '@/contexts/AuthContext';
 // Web API base URL
 const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
 
+interface ReviewImage {
+  id: number;
+  url: string;
+}
+
 export default function EditReviewScreen() {
   const { user } = useAuth();
   const params = useLocalSearchParams();
@@ -27,8 +32,10 @@ export default function EditReviewScreen() {
   const [review, setReview] = useState('');
   const [price, setPrice] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<ReviewImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false); // Track if data has been loaded
 
   // Review info from params
   const reviewId = parseInt(params.reviewId as string || '0');
@@ -44,43 +51,120 @@ export default function EditReviewScreen() {
     { value: '€€€€', label: '€€€€ (Very Expensive)' },
   ];
 
-  // Load existing review data
+  // Load existing review data - ONLY ONCE
   useEffect(() => {
     const loadReviewData = async () => {
       try {
-        // Load data from params first
-        setRating(parseInt(params.rating as string || '0'));
-        setReview(params.review as string || '');
-        setPrice(params.price as string || '');
+        if (!user) {
+          Alert.alert('Error', 'You must be logged in to edit reviews.');
+          router.back();
+          return;
+        }
+
+        // Only load from params once at the beginning
+        if (!dataLoaded) {
+          // Load data from params first for immediate display
+          const paramRating = parseInt(params.rating as string || '0');
+          const paramReview = params.review as string || '';
+          const paramPrice = params.price as string || '';
+          
+          setRating(paramRating);
+          setReview(paramReview);
+          setPrice(paramPrice);
+          
+          console.log('Loaded from params:', { paramRating, paramReview, paramPrice });
+        }
         
-        // Try to fetch full review data from API for images
+        // Fetch full review data from API for images and verification
         const response = await fetch(`${WEB_API_BASE_URL}/api/reviews/${reviewId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'X-User-Email': user?.email || '',
+            'X-User-Email': user.email,
           },
         });
 
         if (response.ok) {
           const reviewData = await response.json();
+          
+          // Verify user ownership
+          if (reviewData.user.email !== user.email && !user.admin) {
+            Alert.alert('Error', 'You can only edit your own reviews.');
+            router.back();
+            return;
+          }
+
+          // Only update state with API data if we haven't loaded params data yet
+          if (!dataLoaded) {
+            setRating(reviewData.rating || 0);
+            setReview(reviewData.review || '');
+            setPrice(reviewData.price || '');
+            
+            console.log('Updated from API:', {
+              rating: reviewData.rating,
+              review: reviewData.review,
+              price: reviewData.price
+            });
+          }
+          
+          // Always update images from API
           if (reviewData.images && reviewData.images.length > 0) {
-            setImages(reviewData.images.map((img: any) => img.url));
+            setExistingImages(reviewData.images);
+          }
+          
+          setDataLoaded(true);
+        } else if (response.status === 404) {
+          Alert.alert('Error', 'Review not found.');
+          router.back();
+          return;
+        } else if (response.status === 403) {
+          Alert.alert('Error', 'You are not authorized to edit this review.');
+          router.back();
+          return;
+        } else {
+          // If API fails, use params data
+          if (!dataLoaded) {
+            const paramRating = parseInt(params.rating as string || '0');
+            const paramReview = params.review as string || '';
+            const paramPrice = params.price as string || '';
+            
+            setRating(paramRating);
+            setReview(paramReview);
+            setPrice(paramPrice);
+            setDataLoaded(true);
+            
+            console.log('Using params data due to API error');
           }
         }
       } catch (error) {
         console.error('Error loading review data:', error);
+        
+        // Fallback to params data
+        if (!dataLoaded) {
+          const paramRating = parseInt(params.rating as string || '0');
+          const paramReview = params.review as string || '';
+          const paramPrice = params.price as string || '';
+          
+          setRating(paramRating);
+          setReview(paramReview);
+          setPrice(paramPrice);
+          setDataLoaded(true);
+          
+          console.log('Using params data due to error:', { paramRating, paramReview, paramPrice });
+        }
+        
+        Alert.alert('Warning', 'Failed to load some review data. You can still edit using the current information.');
       } finally {
         setInitialLoading(false);
       }
     };
 
-    if (reviewId > 0) {
+    if (reviewId > 0 && !dataLoaded) {
       loadReviewData();
-    } else {
+    } else if (reviewId === 0) {
       setInitialLoading(false);
     }
-  }, [reviewId, params, user]);
+  }, [reviewId, user, dataLoaded]); // Remove params from dependency array
 
   const pickImage = async () => {
     try {
@@ -103,8 +187,27 @@ export default function EditReviewScreen() {
     }
   };
 
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+  const removeImage = (index: number, isExisting: boolean = false) => {
+    if (isExisting) {
+      setExistingImages(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setImages(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleRatingChange = (newRating: number) => {
+    console.log('Rating changed to:', newRating);
+    setRating(newRating);
+  };
+
+  const handleReviewChange = (newReview: string) => {
+    console.log('Review text changed to:', newReview);
+    setReview(newReview);
+  };
+
+  const handlePriceChange = (newPrice: string) => {
+    console.log('Price changed to:', newPrice);
+    setPrice(newPrice === price ? '' : newPrice);
   };
 
   const handleSubmit = async () => {
@@ -132,7 +235,8 @@ export default function EditReviewScreen() {
         review,
         price,
         userEmail: user.email,
-        imagesCount: images.length
+        newImagesCount: images.length,
+        existingImagesCount: existingImages.length
       });
 
       // Create FormData
@@ -141,10 +245,15 @@ export default function EditReviewScreen() {
       formData.append('review', review);
       formData.append('price', price);
 
-      // Add images
-      images.forEach((image, index) => {
+      // Add all images (existing + new)
+      // First add existing images
+      existingImages.forEach((image) => {
+        formData.append('imageUrls', image.url);
+      });
+      
+      // Then add new images
+      images.forEach((image) => {
         formData.append('imageUrls', image);
-        console.log(`Added image ${index + 1} to form data`);
       });
 
       console.log('Making API request to:', `${WEB_API_BASE_URL}/api/reviews/${reviewId}`);
@@ -154,7 +263,7 @@ export default function EditReviewScreen() {
         body: formData,
         headers: {
           'X-User-Email': user.email,
-          // Don't set Content-Type header when using FormData - let the browser set it
+          // Don't set Content-Type header when using FormData
         },
       });
 
@@ -163,7 +272,14 @@ export default function EditReviewScreen() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+        
+        if (response.status === 403) {
+          throw new Error('You are not authorized to edit this review.');
+        } else if (response.status === 404) {
+          throw new Error('Review not found.');
+        } else {
+          throw new Error(`Failed to update review (${response.status})`);
+        }
       }
 
       let result;
@@ -189,33 +305,16 @@ export default function EditReviewScreen() {
         [
           {
             text: 'OK',
-            onPress: () => router.back(),
+            onPress: () => {
+              // Navigate back to my reviews to see the updated review
+              router.replace('/my-reviews');
+            },
           },
         ]
       );
     } catch (error) {
       console.error('Error updating review:', error);
-      
-      // For development/testing, show more detailed error info
-      Alert.alert(
-        'Update Error', 
-        `Failed to update review: ${error.message}`,
-        [
-          { text: 'OK' },
-          { 
-            text: 'Mock Update', 
-            onPress: () => {
-              // Mock successful update for testing
-              console.log('Mock update successful');
-              Alert.alert(
-                'Mock Success',
-                'Review updated successfully (mock mode)',
-                [{ text: 'OK', onPress: () => router.back() }]
-              );
-            }
-          }
-        ]
-      );
+      Alert.alert('Update Error', error.message || 'Failed to update review. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -227,7 +326,7 @@ export default function EditReviewScreen() {
         {[1, 2, 3, 4, 5].map((star) => (
           <TouchableOpacity
             key={star}
-            onPress={() => setRating(star)}
+            onPress={() => handleRatingChange(star)}
             style={styles.starButton}
           >
             <Ionicons
@@ -269,6 +368,13 @@ export default function EditReviewScreen() {
       
       <ScrollView style={styles.container}>
         <View style={styles.content}>
+          {/* Debug info - remove in production */}
+          <View style={styles.debugContainer}>
+            <Text style={styles.debugText}>
+              Current values - Rating: {rating}, Price: '{price}', Review length: {review.length}
+            </Text>
+          </View>
+
           {/* Restaurant Info */}
           <View style={styles.restaurantInfo}>
             <Text style={styles.restaurantName}>{restaurantName}</Text>
@@ -299,7 +405,7 @@ export default function EditReviewScreen() {
                     styles.priceChip,
                     price === option.value && styles.priceChipSelected
                   ]}
-                  onPress={() => setPrice(price === option.value ? '' : option.value)}
+                  onPress={() => handlePriceChange(option.value)}
                 >
                   <Text style={[
                     styles.priceChipText,
@@ -318,7 +424,7 @@ export default function EditReviewScreen() {
             <TextInput
               style={styles.reviewInput}
               value={review}
-              onChangeText={setReview}
+              onChangeText={handleReviewChange}
               placeholder="Share your experience at this restaurant..."
               placeholderTextColor="#999"
               multiline
@@ -337,20 +443,44 @@ export default function EditReviewScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Existing Images */}
+            {existingImages.length > 0 && (
+              <>
+                <Text style={styles.imagesSectionTitle}>Current Images:</Text>
+                <View style={styles.imagesContainer}>
+                  {existingImages.map((image, index) => (
+                    <View key={`existing-${index}`} style={styles.imageContainer}>
+                      <Image source={{ uri: image.url }} style={styles.reviewImage} />
+                      <TouchableOpacity
+                        style={styles.removeImageButton}
+                        onPress={() => removeImage(index, true)}
+                      >
+                        <Ionicons name="close-circle" size={24} color="#FF3B30" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* New Images */}
             {images.length > 0 && (
-              <View style={styles.imagesContainer}>
-                {images.map((image, index) => (
-                  <View key={index} style={styles.imageContainer}>
-                    <Image source={{ uri: image }} style={styles.reviewImage} />
-                    <TouchableOpacity
-                      style={styles.removeImageButton}
-                      onPress={() => removeImage(index)}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#FF3B30" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
+              <>
+                <Text style={styles.imagesSectionTitle}>New Images:</Text>
+                <View style={styles.imagesContainer}>
+                  {images.map((image, index) => (
+                    <View key={`new-${index}`} style={styles.imageContainer}>
+                      <Image source={{ uri: image }} style={styles.reviewImage} />
+                      <TouchableOpacity
+                        style={styles.removeImageButton}
+                        onPress={() => removeImage(index, false)}
+                      >
+                        <Ionicons name="close-circle" size={24} color="#FF3B30" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </>
             )}
           </View>
 
@@ -391,6 +521,17 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+  },
+  debugContainer: {
+    backgroundColor: '#f0f0f0',
+    padding: 8,
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
   },
   restaurantInfo: {
     backgroundColor: '#fff',
@@ -499,6 +640,13 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 14,
     fontWeight: '500',
+  },
+  imagesSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+    marginTop: 8,
   },
   imagesContainer: {
     flexDirection: 'row',
