@@ -9,6 +9,8 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  ActionSheetIOS,
+  Platform,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -35,7 +37,7 @@ export default function EditReviewScreen() {
   const [existingImages, setExistingImages] = useState<ReviewImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [dataLoaded, setDataLoaded] = useState(false); // Track if data has been loaded
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Review info from params
   const reviewId = parseInt(params.reviewId as string || '0');
@@ -164,9 +166,48 @@ export default function EditReviewScreen() {
     } else if (reviewId === 0) {
       setInitialLoading(false);
     }
-  }, [reviewId, user, dataLoaded]); // Remove params from dependency array
+  }, [reviewId, user, dataLoaded]);
 
-  const pickImage = async () => {
+  // Request camera permissions
+  const requestCameraPermissions = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Camera Permission Required',
+        'Please grant camera permission to take photos of your meals.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    return true;
+  };
+
+  // Take photo with camera
+  const takePhoto = async () => {
+    try {
+      const hasPermission = await requestCameraPermissions();
+      if (!hasPermission) return;
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const newImage = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        setImages(prev => [...prev, newImage].slice(0, 5)); // Limit to 5 images
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  // Pick image from gallery
+  const pickFromGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -184,6 +225,36 @@ export default function EditReviewScreen() {
     } catch (error) {
       console.error('Error picking images:', error);
       Alert.alert('Error', 'Failed to pick images. Please try again.');
+    }
+  };
+
+  // Show image picker options
+  const showImagePicker = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Gallery'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            takePhoto();
+          } else if (buttonIndex === 2) {
+            pickFromGallery();
+          }
+        }
+      );
+    } else {
+      // For Android, show a custom alert
+      Alert.alert(
+        'Add Photo',
+        'Choose an option',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Take Photo', onPress: takePhoto },
+          { text: 'Choose from Gallery', onPress: pickFromGallery },
+        ]
+      );
     }
   };
 
@@ -437,11 +508,17 @@ export default function EditReviewScreen() {
           <View style={styles.section}>
             <View style={styles.imagesHeader}>
               <Text style={styles.sectionTitle}>Food Images</Text>
-              <TouchableOpacity style={styles.addImageButton} onPress={pickImage}>
+              <TouchableOpacity style={styles.addImageButton} onPress={showImagePicker}>
                 <Ionicons name="camera-outline" size={20} color="#007AFF" />
                 <Text style={styles.addImageText}>Add Photos</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Quick Camera Button */}
+            <TouchableOpacity style={styles.quickCameraButton} onPress={takePhoto}>
+              <Ionicons name="camera" size={24} color="#fff" />
+              <Text style={styles.quickCameraText}>Take Photo</Text>
+            </TouchableOpacity>
 
             {/* Existing Images */}
             {existingImages.length > 0 && (
@@ -640,6 +717,21 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 14,
     fontWeight: '500',
+  },
+  quickCameraButton: {
+    backgroundColor: '#34C759',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  quickCameraText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   imagesSectionTitle: {
     fontSize: 14,
