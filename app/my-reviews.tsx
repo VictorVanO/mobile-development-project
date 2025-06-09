@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG, buildApiUrl } from '@/lib/config';
 import {
   View,
   Text,
@@ -15,7 +16,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Web API base URL
-const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
+// const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
 
 interface Review {
   id: number;
@@ -62,7 +63,7 @@ export default function MyReviewsScreen() {
     try {
       console.log('Fetching reviews for user:', user.email);
       
-      const response = await fetch(`${WEB_API_BASE_URL}/api/reviews/user`, {
+      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USER_REVIEWS), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +78,8 @@ export default function MyReviewsScreen() {
         // Fallback: get all reviews and filter by user
         console.log('User reviews endpoint not available, using fallback...');
         
-        const fallbackResponse = await fetch(`${WEB_API_BASE_URL}/api/reviews`, {
+
+        const fallbackResponse = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.REVIEWS), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -185,7 +187,7 @@ export default function MyReviewsScreen() {
     try {
       console.log('Deleting review:', reviewId);
       
-      const response = await fetch(`${WEB_API_BASE_URL}/api/reviews/${reviewId}`, {
+      const response = await fetch(buildApiUrl(`/api/reviews/${reviewId}`), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

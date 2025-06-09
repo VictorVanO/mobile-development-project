@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG, buildApiUrl } from '@/lib/config';
 import {
   View,
   Text,
@@ -14,7 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Web API base URL
-const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
+// const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
 
 interface Review {
   id: number;
@@ -64,7 +65,8 @@ export default function RestaurantReviewsScreen() {
   const fetchReviews = async () => {
     try {
       // First, try the existing reviews API endpoint
-      const url = new URL(`${WEB_API_BASE_URL}/api/reviews`);
+
+      const url = new URL(buildApiUrl(API_CONFIG.ENDPOINTS.REVIEWS));
       url.searchParams.append('name', restaurantName);
       url.searchParams.append('latitude', latitude.toString());
       url.searchParams.append('longitude', longitude.toString());
@@ -86,7 +88,7 @@ export default function RestaurantReviewsScreen() {
         // try the recent reviews endpoint and filter
         console.log('Trying fallback to recent reviews...');
         
-        const fallbackResponse = await fetch(`${WEB_API_BASE_URL}/api/reviews`, {
+        const fallbackResponse = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.REVIEWS), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

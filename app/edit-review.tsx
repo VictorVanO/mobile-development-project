@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { buildApiUrl, API_CONFIG } from '@/lib/config';
 import {
   View,
   Text,
@@ -18,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Web API base URL
-const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
+// const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
 
 interface ReviewImage {
   id: number;
@@ -78,7 +79,8 @@ export default function EditReviewScreen() {
         }
         
         // Fetch full review data from API for images and verification
-        const response = await fetch(`${WEB_API_BASE_URL}/api/reviews/${reviewId}`, {
+
+        const response = await fetch(buildApiUrl(`/api/reviews/${reviewId}`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -327,9 +329,11 @@ export default function EditReviewScreen() {
         formData.append('imageUrls', image);
       });
 
-      console.log('Making API request to:', `${WEB_API_BASE_URL}/api/reviews/${reviewId}`);
+      
+      const apiUrl = buildApiUrl(`/api/reviews/${reviewId}`);
+      console.log('Making API request to:', apiUrl);
 
-      const response = await fetch(`${WEB_API_BASE_URL}/api/reviews/${reviewId}`, {
+      const response = await fetch(apiUrl, {
         method: 'PUT',
         body: formData,
         headers: {

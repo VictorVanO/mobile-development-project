@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { z } from 'zod';
+import { API_CONFIG, buildApiUrl, getRequestHeaders } from './config';
 
 // User validation schemas
 export const userSchema = z.object({
@@ -29,10 +30,6 @@ export type User = {
 const USER_DATA_KEY = 'user_data';
 const USER_SESSION_KEY = 'user_session';
 
-// Web API base URL - Make sure this matches your web server
-// const WEB_API_BASE_URL = 'http://localhost:3000'; // Web server URL
-const WEB_API_BASE_URL = 'http://192.168.88.34:3000'; // Web server URL
-
 export class WebApiAuthService {
   /**
    * Login using the web version's API
@@ -46,7 +43,7 @@ export class WebApiAuthService {
       formData.append('email', validatedData.email);
       formData.append('password', validatedData.password);
 
-      const response = await fetch(`${WEB_API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.LOGIN), {
         method: 'POST',
         body: formData,
       });
@@ -94,7 +91,7 @@ export class WebApiAuthService {
         formData.append('lastName', validatedData.lastName);
       }
 
-      const response = await fetch(`${WEB_API_BASE_URL}/api/auth/register`, {
+      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.REGISTER), {
         method: 'POST',
         body: formData,
       });
@@ -131,12 +128,9 @@ export class WebApiAuthService {
 
       // Try to get fresh user data from the web API
       try {
-        const response = await fetch(`${WEB_API_BASE_URL}/api/auth/user`, {
+        const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USER), {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-Email': sessionEmail,
-          },
+          headers: getRequestHeaders(sessionEmail),
         });
 
         if (response.ok) {
@@ -170,12 +164,9 @@ export class WebApiAuthService {
       if (sessionEmail) {
         // Try to logout from web API
         try {
-          await fetch(`${WEB_API_BASE_URL}/api/auth/logout`, {
+          await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.LOGOUT), {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-User-Email': sessionEmail,
-            },
+            headers: getRequestHeaders(sessionEmail),
           });
         } catch (error) {
           console.log('Web API logout failed, continuing with local logout');
@@ -217,15 +208,14 @@ export class WebApiAuthService {
   /**
    * Helper function to make authenticated requests to the web API
    */
-  static async authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  static async authenticatedFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
     const sessionEmail = await this.getSessionEmail();
     
-    return fetch(url, {
+    return fetch(buildApiUrl(endpoint), {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        ...getRequestHeaders(sessionEmail || undefined),
         ...options.headers,
-        ...(sessionEmail && { 'X-User-Email': sessionEmail }),
       },
     });
   }
@@ -240,7 +230,7 @@ export class SimpleWebApiAuth {
    */
   static async getUsers(): Promise<User[]> {
     try {
-      const response = await fetch(`${WEB_API_BASE_URL}/api/users`);
+      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USERS));
       if (!response.ok) {
         throw new Error('Failed to fetch users');
       }
@@ -256,7 +246,7 @@ export class SimpleWebApiAuth {
    */
   static async testConnection(): Promise<boolean> {
     try {
-      const response = await fetch(`${WEB_API_BASE_URL}/api/users`);
+      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USERS));
       return response.ok;
     } catch (error) {
       console.error('Connection test failed:', error);

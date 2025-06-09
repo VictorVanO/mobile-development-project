@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_CONFIG, buildApiUrl } from '@/lib/config';
 import {
   View,
   Text,
@@ -18,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Web API base URL
-const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
+// const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
 
 export default function AddReviewScreen() {
   const { user } = useAuth();
@@ -185,9 +186,11 @@ export default function AddReviewScreen() {
         console.log(`Added image ${index + 1} to form data`);
       });
 
-      console.log('Making API request to:', `${WEB_API_BASE_URL}/api/reviews`);
+      const apiUrl = buildApiUrl(API_CONFIG.ENDPOINTS.REVIEWS);
 
-      const response = await fetch(`${WEB_API_BASE_URL}/api/reviews`, {
+      console.log('Making API request to:', apiUrl);
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
         headers: {

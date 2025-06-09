@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG, buildApiUrl } from '@/lib/config';
 import { 
   Text, 
   View, 
@@ -13,7 +14,7 @@ import { Link } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 // Web API base URL - should match your server
-const WEB_API_BASE_URL = 'http://192.168.88.34:3000'; // Adjust to match your server IP
+// const WEB_API_BASE_URL = 'http://192.168.88.34:3000';
 
 interface Review {
   id: number;
@@ -54,7 +55,7 @@ export default function Index() {
 
   const fetchRecentReviews = async () => {
     try {
-      const response = await fetch(`${WEB_API_BASE_URL}/api/reviews`);
+      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.REVIEWS));
       if (!response.ok) {
         throw new Error('Failed to fetch reviews');
       }
